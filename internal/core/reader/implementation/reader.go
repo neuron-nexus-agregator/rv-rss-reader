@@ -102,7 +102,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 				return
 			case <-ticker.C:
 				items, err := r.ParseOnce(url, ctx)
-				if err != nil && err == NoItemsFoundError {
+				if err == NoItemsFoundError {
 					continue
 				}
 				for _, item := range items {
