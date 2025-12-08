@@ -3,12 +3,15 @@ package implementation
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"gafarov/rss-reader/internal/model/rss"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 )
+
+var ClosedError error = errors.New("reader is closed")
 
 type RssReader struct {
 	output   chan rss.Item
@@ -35,6 +38,14 @@ func New() *RssReader {
 	}
 }
 
+func (r *RssReader) Stop() error {
+	if r.isStoped.Load() {
+		return ClosedError
+	}
+	r.close()
+	return nil
+}
+
 func (r *RssReader) Output() <-chan rss.Item {
 	return r.output
 }
@@ -43,7 +54,7 @@ func (r *RssReader) IsStopped() bool {
 	return r.isStoped.Load()
 }
 
-func (r *RssReader) Close() {
+func (r *RssReader) close() {
 	r.stopOnce.Do(func() {
 		r.isStoped.Store(true)
 		close(r.stopChan)
@@ -89,7 +100,10 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 			case <-r.stopChan:
 				return
 			case <-ticker.C:
-				items := r.ParseOnce(url, ctx)
+				items, err := r.ParseOnce(url, ctx)
+				if err != nil {
+					continue
+				}
 				for _, item := range items {
 					select {
 					case r.output <- *item:
@@ -103,26 +117,31 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 	}(url, delay, ctx)
 }
 
-func (r *RssReader) ParseOnce(url string, ctx context.Context) []*rss.Item {
+func (r *RssReader) ParseOnce(url string, ctx context.Context) ([]*rss.Item, error) {
 	if err := ctx.Err(); err != nil {
-		return nil
+		return nil, err
 	}
 
 	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
 	response, err := r.client.Do(req)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 	defer response.Body.Close()
 
-	var channel rss.Channel
+	var channel rss.Rss
 	if err := xml.NewDecoder(response.Body).Decode(&channel); err != nil {
-		return nil
+		return nil, err
 	}
 
 	var items []*rss.Item
-	for i := range channel.Items {
-		itm := &channel.Items[i]
+
+	if len(channel.Channel.Items) == 0 {
+		return nil, errors.New("no items found")
+	}
+
+	for i := range channel.Channel.Items {
+		itm := &channel.Channel.Items[i]
 		date, parseErr := ParseRSSDate(itm.PubDate)
 		if parseErr == nil {
 			itm.PubTimeParsed = date
@@ -130,5 +149,5 @@ func (r *RssReader) ParseOnce(url string, ctx context.Context) []*rss.Item {
 		items = append(items, itm)
 	}
 
-	return items
+	return items, nil
 }
