@@ -12,6 +12,7 @@ import (
 )
 
 var ClosedError error = errors.New("reader is closed")
+var NoItemsFoundError error = errors.New("no items found")
 
 type RssReader struct {
 	output   chan rss.Item
@@ -101,7 +102,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 				return
 			case <-ticker.C:
 				items, err := r.ParseOnce(url, ctx)
-				if err != nil {
+				if err != nil && err == NoItemsFoundError {
 					continue
 				}
 				for _, item := range items {
@@ -137,7 +138,7 @@ func (r *RssReader) ParseOnce(url string, ctx context.Context) ([]*rss.Item, err
 	var items []*rss.Item
 
 	if len(channel.Channel.Items) == 0 {
-		return nil, errors.New("no items found")
+		return nil, NoItemsFoundError
 	}
 
 	for i := range channel.Channel.Items {
