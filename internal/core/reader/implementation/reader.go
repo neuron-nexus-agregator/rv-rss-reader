@@ -3,17 +3,12 @@ package implementation
 import (
 	"context"
 	"encoding/xml"
-	"errors"
 	"gafarov/rss-reader/internal/model/rss"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
 )
-
-var ClosedError error = errors.New("reader is closed")
-var NoItemsFoundError error = errors.New("no items found")
-var AlreadyStartedError error = errors.New("already started")
 
 type RssReader struct {
 	output   chan rss.Item
