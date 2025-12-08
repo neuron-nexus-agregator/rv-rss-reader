@@ -13,6 +13,7 @@ import (
 
 var ClosedError error = errors.New("reader is closed")
 var NoItemsFoundError error = errors.New("no items found")
+var AlreadyStartedError error = errors.New("already started")
 
 type RssReader struct {
 	output   chan rss.Item
@@ -76,14 +77,14 @@ func (r *RssReader) isInProcessOrRegister(url string) bool {
 	return true
 }
 
-func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Context) {
+func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Context) error {
 
 	if r.IsStopped() {
-		return
+		return ClosedError
 	}
 
 	if r.isInProcessOrRegister(url) {
-		return
+		return AlreadyStartedError
 	}
 
 	r.wg.Add(1)
@@ -116,6 +117,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 			}
 		}
 	}(url, delay, ctx)
+	return nil
 }
 
 func (r *RssReader) ParseOnce(url string, ctx context.Context) ([]*rss.Item, error) {

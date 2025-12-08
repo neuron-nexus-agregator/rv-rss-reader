@@ -35,10 +35,11 @@ func TestRssReader_StartParsing(t *testing.T) {
 	r := rss.New()
 	ctx := context.Background()
 
-	r.StartParsing("https://realnoevremya.ru/rss/yandex-dzen.xml", time.Second, ctx)
+	err := r.StartParsing("https://realnoevremya.ru/rss/yandex-dzen.xml", time.Second, ctx)
+	assert.Nil(t, err)
 	assert.False(t, r.IsStopped())
 
-	err := r.Stop()
+	err = r.Stop()
 	assert.Nil(t, err)
 	assert.True(t, r.IsStopped())
 }
@@ -70,6 +71,22 @@ func TestRssReader_GetItemContent(t *testing.T) {
 	assert.NotEmpty(t, item.Fulltext)
 	assert.NotEmpty(t, item.Link)
 	assert.NotEmpty(t, item.Description)
+
+	err = r.Stop()
+	assert.Nil(t, err)
+	assert.True(t, r.IsStopped())
+}
+
+func TestRssReader_DoubleStart(t *testing.T) {
+	url := "https://realnoevremya.ru/rss/yandex-dzen.xml"
+	r := rss.New()
+	ctx := context.Background()
+
+	err := r.StartParsing(url, time.Second, ctx)
+	assert.Nil(t, err)
+
+	err = r.StartParsing(url, time.Second, ctx)
+	assert.Equal(t, rss.AlreadyStartedError, err)
 
 	err = r.Stop()
 	assert.Nil(t, err)
