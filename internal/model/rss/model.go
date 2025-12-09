@@ -11,18 +11,19 @@ type Enclosure struct {
 }
 
 type Item struct {
-	Title         string     `xml:"title" json:"title"`
-	PubDate       string     `xml:"pubDate" json:"pubDate"`
-	PubTimeParsed *time.Time `xml:"-" json:"pubTimeParsed"`
-	Category      []string   `xml:"category" json:"category"`
-	Link          string     `xml:"link" json:"link"`
-	AmpLink       string     `xml:"amplink" json:"ampLink"`
-	Description   string     `xml:"description" json:"description"`
-	Fulltext      string     `xml:"http://purl.org/rss/1.0/modules/content/ encoded" json:"fulltext"`
-	Enclosure     Enclosure  `xml:"enclosure" json:"enclosure"`
-	Guid          string     `xml:"guid" json:"guid"`
-	Region        string     `xml:"region" json:"region"`
-	Author        string     `xml:"author" json:"author"`
+	Title           string     `xml:"title" json:"title"`
+	PubDate         string     `xml:"pubDate" json:"pubDate"`
+	PubTimeParsed   *time.Time `xml:"-" json:"pubTimeParsed"`
+	Category        []string   `xml:"category" json:"category"`
+	ArticleCategory string     `xml:"category-article" json:"articleCategory"`
+	Link            string     `xml:"link" json:"link"`
+	AmpLink         string     `xml:"amplink" json:"ampLink"`
+	Description     string     `xml:"description" json:"description"`
+	Fulltext        string     `xml:"http://purl.org/rss/1.0/modules/content/ encoded" json:"fullText"`
+	Enclosure       Enclosure  `xml:"enclosure" json:"enclosure"`
+	Guid            string     `xml:"guid" json:"guid"`
+	Region          string     `xml:"region" json:"region"`
+	Author          string     `xml:"author" json:"author"`
 }
 
 type Channel struct {
