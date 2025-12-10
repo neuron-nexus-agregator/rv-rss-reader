@@ -3,6 +3,7 @@ package implementation
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -17,7 +18,30 @@ type Kafka struct {
 	stopOnce sync.Once
 }
 
-func New(topic string, addr ...string) *Kafka {
+func ping(addr ...string) error {
+	for _, a := range addr {
+		conn, err := kafka.Dial("tcp", a)
+		if err != nil {
+			return fmt.Errorf("kafka connect error: %w", err)
+		}
+
+		// проверка, что брокер отвечает
+		_, err = conn.ReadPartitions()
+		_ = conn.Close()
+
+		if err != nil {
+			return fmt.Errorf("kafka ping error: %w", err)
+		}
+	}
+	return nil
+}
+
+func New(topic string, addr ...string) (*Kafka, error) {
+	err := ping(addr...)
+	if err != nil {
+		return nil, err
+	}
+
 	writer := kafka.NewWriter(kafka.WriterConfig{
 		Brokers:      addr,
 		Topic:        topic,
@@ -31,7 +55,7 @@ func New(topic string, addr ...string) *Kafka {
 
 	return &Kafka{
 		writer: writer,
-	}
+	}, nil
 }
 
 func (k *Kafka) Close() {
