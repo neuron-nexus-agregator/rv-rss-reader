@@ -31,7 +31,7 @@ func TestRssReader_DoubleClose(t *testing.T) {
 	assert.True(t, r.IsStopped())
 
 	err = r.Stop()
-	assert.Equal(t, rss.ClosedError, err)
+	assert.Equal(t, rss.ErrClosed, err)
 }
 
 func TestRssReader_StartParsing(t *testing.T) {
@@ -88,7 +88,7 @@ func TestRssReader_DoubleStart(t *testing.T) {
 	assert.Nil(t, err)
 
 	err = r.StartParsing(RSS_URL, time.Second, ctx)
-	assert.Equal(t, rss.AlreadyStartedError, err)
+	assert.Equal(t, rss.ErrAlreadyStarted, err)
 
 	err = r.Stop()
 	assert.Nil(t, err)

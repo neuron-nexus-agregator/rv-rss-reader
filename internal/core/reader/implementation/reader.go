@@ -38,7 +38,7 @@ func New() *RssReader {
 
 func (r *RssReader) Stop() error {
 	if r.isStoped.Load() {
-		return ClosedError
+		return ErrClosed
 	}
 	r.close()
 	return nil
@@ -76,11 +76,11 @@ func (r *RssReader) isInProcessOrRegister(url string) bool {
 func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Context) error {
 
 	if r.IsStopped() {
-		return ClosedError
+		return ErrClosed
 	}
 
 	if r.isInProcessOrRegister(url) {
-		return AlreadyStartedError
+		return ErrAlreadyStarted
 	}
 
 	r.wg.Add(1)
@@ -90,7 +90,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 		defer ticker.Stop()
 
 		err := r.startOnce(url, ctx)
-		if err != nil && err != NoItemsFoundError {
+		if err != nil && err != ErrNoItemsFound {
 			return
 		}
 
@@ -105,7 +105,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 				return
 			case <-ticker.C:
 				err := r.startOnce(url, ctx)
-				if err != nil && err != NoItemsFoundError {
+				if err != nil && err != ErrNoItemsFound {
 					return
 				}
 			}
@@ -116,7 +116,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 
 func (r *RssReader) startOnce(url string, ctx context.Context) error {
 	items, err := r.ParseOnce(url, ctx)
-	if err == NoItemsFoundError {
+	if err == ErrNoItemsFound {
 		return nil
 	} else if err != nil {
 		return err
@@ -152,7 +152,7 @@ func (r *RssReader) ParseOnce(url string, ctx context.Context) ([]*rss.Item, err
 	var items []*rss.Item
 
 	if len(channel.Channel.Items) == 0 {
-		return nil, NoItemsFoundError
+		return nil, ErrNoItemsFound
 	}
 
 	for i := range channel.Channel.Items {
