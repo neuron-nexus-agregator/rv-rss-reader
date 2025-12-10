@@ -208,3 +208,25 @@ func (r *RssReader) ParseOnce(url string, ctx context.Context) ([]*rss.Item, err
 
 	return items, nil
 }
+
+func (r *RssReader) GetChannel(url string, ctx context.Context) (*rss.Channel, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	response, err := r.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer response.Body.Close()
+
+	var channel rss.Rss
+	if err := xml.NewDecoder(response.Body).Decode(&channel); err != nil {
+		return nil, err
+	}
+
+	channel.Channel.Items = nil
+
+	return &channel.Channel, nil
+}
