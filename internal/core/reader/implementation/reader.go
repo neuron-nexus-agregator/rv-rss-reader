@@ -28,7 +28,7 @@ func New() *RssReader {
 	isStoped.Store(false)
 
 	return &RssReader{
-		output:   make(chan rss.Item, 100),
+		output:   make(chan rss.Item, 500),
 		feeds:    make(map[string]struct{}),
 		stopChan: make(chan struct{}),
 		client:   http.Client{Timeout: 10 * time.Second},

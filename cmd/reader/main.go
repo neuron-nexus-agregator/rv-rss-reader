@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/joho/godotenv"
 
@@ -29,25 +28,20 @@ func main() {
 	reader := rss.New()
 	defer reader.Stop()
 
-	out := reader.Output()
+	// out := reader.Output()
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	if err := reader.StartParsing(os.Getenv("RSSURL"), 1*time.Minute, ctx); err != nil {
+	// if err := reader.StartParsing(os.Getenv("RSSURL"), 1*time.Minute, ctx); err != nil {
+	// 	log.Fatal(err)
+	// } else {
+	// 	log.Default().Println("Parsing started")
+	// }
+
+	items, err := reader.ParseOnce(os.Getenv("RSSURL"), ctx)
+	if err != nil {
 		log.Fatal(err)
-	} else {
-		log.Default().Println("Parsing started")
 	}
+	fmt.Println("Items read:", len(items))
 
-	ids := make(map[string]bool)
-
-	for item := range out {
-		if _, ok := ids[item.Guid]; ok {
-			continue
-		} else {
-			ids[item.Guid] = true
-		}
-
-		fmt.Println(item.Title, "-", item.Link)
-	}
 }
