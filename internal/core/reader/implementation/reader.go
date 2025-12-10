@@ -3,11 +3,12 @@ package implementation
 import (
 	"context"
 	"encoding/xml"
-	"gafarov/rss-reader/internal/model/rss"
 	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"gafarov/rss-reader/internal/model/rss"
 )
 
 type RssReader struct {
@@ -87,6 +88,12 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 		defer r.wg.Done()
 		ticker := time.NewTicker(delay)
 		defer ticker.Stop()
+
+		err := r.startOnce(url, ctx)
+		if err != nil && err != NoItemsFoundError {
+			return
+		}
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -97,21 +104,31 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 			case <-r.stopChan:
 				return
 			case <-ticker.C:
-				items, err := r.ParseOnce(url, ctx)
-				if err == NoItemsFoundError {
-					continue
-				}
-				for _, item := range items {
-					select {
-					case r.output <- *item:
-					default:
-						// skip in channel is blocked
-						continue
-					}
+				err := r.startOnce(url, ctx)
+				if err != nil && err != NoItemsFoundError {
+					return
 				}
 			}
 		}
 	}(url, delay, ctx)
+	return nil
+}
+
+func (r *RssReader) startOnce(url string, ctx context.Context) error {
+	items, err := r.ParseOnce(url, ctx)
+	if err == NoItemsFoundError {
+		return nil
+	} else if err != nil {
+		return err
+	}
+	for _, item := range items {
+		select {
+		case r.output <- *item:
+		default:
+			// skip in channel is blocked
+			continue
+		}
+	}
 	return nil
 }
 
