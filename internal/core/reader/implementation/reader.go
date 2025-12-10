@@ -125,7 +125,7 @@ func (r *RssReader) startOnce(url string, ctx context.Context) error {
 		select {
 		case r.output <- *item:
 		default:
-			// skip in channel is blocked
+			// skip if channel is blocked
 			continue
 		}
 	}
