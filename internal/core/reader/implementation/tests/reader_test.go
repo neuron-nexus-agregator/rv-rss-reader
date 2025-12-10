@@ -2,7 +2,6 @@ package implementation_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
@@ -11,7 +10,7 @@ import (
 	rss "gafarov/rss-reader/internal/core/reader/implementation"
 )
 
-var RSS_URL = os.Getenv("RSSURL")
+var RSS_URL = "https://realnoevremya.ru/rss/yandex-dzen.xml"
 
 func TestRssReader_IsStopped(t *testing.T) {
 	r := rss.New()
