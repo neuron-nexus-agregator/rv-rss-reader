@@ -83,16 +83,16 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 		return ErrAlreadyStarted
 	}
 
+	err := r.startOnce(url, ctx)
+	if err != nil && err != ErrNoItemsFound {
+		return err
+	}
+
 	r.wg.Add(1)
 	go func(url string, delay time.Duration, ctx context.Context) {
 		defer r.wg.Done()
 		ticker := time.NewTicker(delay)
 		defer ticker.Stop()
-
-		err := r.startOnce(url, ctx)
-		if err != nil && err != ErrNoItemsFound {
-			return
-		}
 
 		for {
 			select {
