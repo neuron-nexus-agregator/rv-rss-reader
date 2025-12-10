@@ -9,4 +9,5 @@ import (
 type IReader interface {
 	StartParsing(url string, delay time.Duration, ctx context.Context)
 	ParseOnce(url string, ctx context.Context) []*rss.Item
+	Output() <-chan rss.Item
 }

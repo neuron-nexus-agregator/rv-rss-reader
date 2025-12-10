@@ -8,10 +8,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"gafarov/rss-reader/internal/core/cache"
 	"gafarov/rss-reader/internal/model/rss"
 )
 
 type RssReader struct {
+	cache    cache.ICache
+	lastGuid string
 	output   chan rss.Item
 	stopOnce sync.Once
 	stopChan chan struct{}
@@ -22,12 +25,14 @@ type RssReader struct {
 	isStoped *atomic.Bool
 }
 
-func New() *RssReader {
+func New(cache cache.ICache) *RssReader {
 
 	isStoped := atomic.Bool{}
 	isStoped.Store(false)
 
 	return &RssReader{
+		cache:    cache,
+		lastGuid: "",
 		output:   make(chan rss.Item, 500),
 		feeds:    make(map[string]struct{}),
 		stopChan: make(chan struct{}),
@@ -115,13 +120,41 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 }
 
 func (r *RssReader) startOnce(url string, ctx context.Context) error {
+	var lastGuid string = ""
+
+	if r.lastGuid == "" {
+		rLastGuid, err := r.getLastReadGuid()
+		if err != nil {
+			lastGuid = ""
+		}
+		lastGuid = rLastGuid
+	} else {
+		lastGuid = r.lastGuid
+	}
+
 	items, err := r.ParseOnce(url, ctx)
 	if err == ErrNoItemsFound {
 		return nil
 	} else if err != nil {
 		return err
 	}
+
+	if lastGuid == "" && len(items) > 0 {
+		lastGuid = items[0].Guid
+		r.lastGuid = lastGuid
+		err = r.saveLastReadGuid(lastGuid)
+		if err != nil {
+			// TODO handle error
+		}
+		return nil
+	}
+
 	for _, item := range items {
+
+		if item.Guid == lastGuid {
+			break
+		}
+
 		select {
 		case r.output <- *item:
 		default:
@@ -129,6 +162,15 @@ func (r *RssReader) startOnce(url string, ctx context.Context) error {
 			continue
 		}
 	}
+
+	if len(items) > 0 {
+		r.lastGuid = items[0].Guid
+		err = r.saveLastReadGuid(r.lastGuid)
+		if err != nil {
+			// TODO handle error
+		}
+	}
+
 	return nil
 }
 

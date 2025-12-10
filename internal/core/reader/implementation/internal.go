@@ -5,6 +5,22 @@ import (
 	"time"
 )
 
+const (
+	LastReadGuidKey = "rss_reader:last_read_guid"
+)
+
+func (r *RssReader) getLastReadGuid() (string, error) {
+	data, err := r.cache.Get(LastReadGuidKey)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
+}
+
+func (r *RssReader) saveLastReadGuid(guid string) error {
+	return r.cache.Set(LastReadGuidKey, []byte(guid), 24*time.Hour)
+}
+
 func ParseRSSDate(s string) (*time.Time, error) {
 	layouts := []string{
 		time.RFC1123Z,
