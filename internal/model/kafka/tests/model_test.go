@@ -2,12 +2,13 @@ package kafka_test
 
 import (
 	"fmt"
-	"gafarov/rss-reader/internal/model/kafka"
-	"gafarov/rss-reader/internal/model/rss"
 	"testing"
 
 	"github.com/brianvoe/gofakeit/v6"
 	"github.com/stretchr/testify/assert"
+
+	"gafarov/rss-reader/internal/model/kafka"
+	"gafarov/rss-reader/internal/model/rss"
 )
 
 func TestMessage_ConvertFromRSS(t *testing.T) {
@@ -21,13 +22,14 @@ func TestMessage_ConvertFromRSS(t *testing.T) {
 			}
 
 			testingChannel := &kafka.Channel{}
-			result := testingChannel.ConvertFromRSS(channel)
+			result := testingChannel.ConvertFromRSS(channel, "testCode")
 
 			assert.Equal(t, channel.Title, testingChannel.Title, "Title должен совпасть")
 			assert.Equal(t, channel.Link, testingChannel.Link, "Link должен совпасть")
 			assert.Equal(t, channel.Description, testingChannel.Description, "Description должен совпасть")
 			assert.Equal(t, channel.Language, testingChannel.Language, "Language должен совпасть")
 			assert.Equal(t, testingChannel, result, "Объекты должны совпасть")
+			assert.Equal(t, "testCode", result.Code, "Коды должны совпасть")
 		})
 	}
 }
