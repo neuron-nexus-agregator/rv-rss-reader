@@ -6,13 +6,15 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"go.uber.org/zap"
 )
 
 type RedisCache struct {
 	client *redis.Client
+	logger *zap.Logger
 }
 
-func New(host, password string) (*RedisCache, error) {
+func New(host, password string, logger *zap.Logger) (*RedisCache, error) {
 
 	client := redis.NewClient(&redis.Options{
 		Addr:     host,
@@ -31,6 +33,7 @@ func New(host, password string) (*RedisCache, error) {
 
 	return &RedisCache{
 		client: client,
+		logger: logger,
 	}, nil
 }
 
@@ -44,11 +47,28 @@ func (c *RedisCache) Get(key string) ([]byte, error) {
 		if err == redis.Nil {
 			return nil, nil
 		}
+
+		if c.logger != nil {
+			c.logger.Error("failed to get data from redis", zap.Error(err), zap.String("key", key))
+		}
 		return nil, err
 	}
+
+	if c.logger != nil {
+		c.logger.Info("got from cache", zap.String("key", key), zap.String("value", string(data)))
+	}
+
 	return data, nil
 }
 
 func (c *RedisCache) Set(key string, value []byte, expiration time.Duration) error {
-	return c.client.Set(context.Background(), key, value, expiration).Err()
+	err := c.client.Set(context.Background(), key, value, expiration).Err()
+
+	if err != nil && c.logger != nil {
+		c.logger.Error("failed to set data in redis", zap.Error(err), zap.String("key", key))
+	} else if c.logger != nil {
+		c.logger.Info("set in cache", zap.String("key", key), zap.String("value", string(value)))
+	}
+
+	return err
 }

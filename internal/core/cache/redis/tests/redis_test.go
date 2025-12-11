@@ -12,7 +12,7 @@ import (
 func TestRedis_Connect(t *testing.T) {
 	host := os.Getenv("REDIS_HOST")
 	port := os.Getenv("REDIS_PASSWORD")
-	client, err := redis.New(host, port)
+	client, err := redis.New(host, port, nil)
 
 	assert.Nil(t, err, "Ошибка подключения к Redis")
 	assert.NotNil(t, client, "Клиент пустой")
@@ -24,7 +24,7 @@ func TestRedis_Connect(t *testing.T) {
 func TestRedis_SetGetCorrect(t *testing.T) {
 	host := os.Getenv("REDIS_HOST")
 	port := os.Getenv("REDIS_PASSWORD")
-	client, err := redis.New(host, port)
+	client, err := redis.New(host, port, nil)
 
 	assert.Nil(t, err, "Ошибка подключения к Redis")
 	assert.NotNil(t, client, "Клиент пустой")
@@ -46,7 +46,7 @@ func TestRedis_SetGetCorrect(t *testing.T) {
 func TestRedis_SetGetNotCorrect(t *testing.T) {
 	host := os.Getenv("REDIS_HOST")
 	port := os.Getenv("REDIS_PASSWORD")
-	client, err := redis.New(host, port)
+	client, err := redis.New(host, port, nil)
 
 	assert.Nil(t, err, "Ошибка подключения к Redis")
 	assert.NotNil(t, client, "Клиент пустой")
