@@ -1,13 +1,17 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"gopkg.in/natefinch/lumberjack.v2"
+
+	"gafarov/rss-reader/internal/pkg/app"
 )
 
 func initSystem() error {
@@ -85,11 +89,71 @@ func initLogger() *zap.Logger {
 }
 
 func main() {
-	logger := initLogger()
-	defer logger.Sync()
 
-	for i := range 3 {
-		fmt.Println(i)
+	logger := initLogger()
+	if err := initSystem(); err != nil {
+		logger.Fatal("Failed to initialize system", zap.Error(err))
+		os.Exit(1)
 	}
 
+	redis_host := os.Getenv("REDIS_HOST")
+	if redis_host == "" {
+		logger.Fatal("REDIS_HOST environment variable is not set")
+		os.Exit(1)
+	}
+
+	redis_password := os.Getenv("REDIS_PASSWORD")
+	if redis_password == "" {
+		logger.Fatal("REDIS_PASSWORD environment variable is not set")
+		os.Exit(1)
+	}
+
+	kafka_addr := os.Getenv("KAFKA_ADDR")
+	if kafka_addr == "" {
+		logger.Fatal("KAFKA_ADDR environment variable is not set")
+		os.Exit(1)
+	}
+
+	kafka_topic := os.Getenv("KAFKA_TOPIC")
+	if kafka_topic == "" {
+		logger.Fatal("KAFKA_TOPIC environment variable is not set")
+		os.Exit(1)
+	}
+
+	redisData := app.RedisData{
+		Host:     redis_host,
+		Password: redis_password,
+	}
+
+	kafkaData := app.KafkaData{
+		Addr:  []string{kafka_addr},
+		Topic: kafka_topic,
+	}
+
+	app, err := app.New(redisData, kafkaData, logger)
+	if err != nil {
+		logger.Fatal("Failed to create application", zap.Error(err))
+		os.Exit(1)
+	}
+
+	rss_url := os.Getenv("RSS_URL")
+	if rss_url == "" {
+		logger.Fatal("RSS_URL environment variable is not set")
+		os.Exit(1)
+	}
+
+	rss_code := os.Getenv("RSS_CODE")
+	if rss_code == "" {
+		logger.Fatal("RSS_CODE environment variable is not set")
+		os.Exit(1)
+	}
+
+	delay := 1 * time.Minute
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	err = app.Run(rss_url, rss_code, delay, ctx)
+	if err != nil {
+		logger.Fatal("Failed to run application", zap.Error(err))
+	}
 }

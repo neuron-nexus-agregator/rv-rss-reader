@@ -4,6 +4,8 @@ import (
 	"context"
 	"gafarov/rss-reader/internal/core/kafka"
 	"gafarov/rss-reader/internal/core/reader"
+	"os"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -27,6 +29,7 @@ func (a *App) Run(url, code string, delay time.Duration, ctx context.Context) er
 	a.logger.Info("Starting app", zap.String("url", url), zap.String("code", code), zap.Duration("delay", delay))
 	output := a.reader.Output()
 	a.reader.StartParsing(url, delay, ctx)
+	defer a.reader.Stop()
 
 	channel, err := a.reader.GetChannel(url, ctx)
 	if err != nil {
@@ -34,8 +37,13 @@ func (a *App) Run(url, code string, delay time.Duration, ctx context.Context) er
 		return err
 	}
 
+	isTesting := strings.ToLower(os.Getenv("TEST")) == "true"
+	if isTesting {
+		a.logger.Info("Running in testing mode")
+	}
+
 	for item := range output {
-		err := a.kafka.Write(&item, channel, false, code)
+		err := a.kafka.Write(&item, channel, isTesting, code)
 		if err != nil {
 			a.logger.Error("failed to write item", zap.Error(err))
 		}

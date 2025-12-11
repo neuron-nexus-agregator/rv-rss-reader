@@ -11,4 +11,5 @@ type IReader interface {
 	ParseOnce(url string, ctx context.Context) ([]*rss.Item, error)
 	GetChannel(url string, ctx context.Context) (*rss.Channel, error)
 	Output() <-chan rss.Item
+	Stop() error
 }
