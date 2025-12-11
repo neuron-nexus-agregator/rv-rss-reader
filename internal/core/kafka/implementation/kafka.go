@@ -11,10 +11,12 @@ import (
 	"gafarov/rss-reader/internal/model/rss"
 
 	"github.com/segmentio/kafka-go"
+	"go.uber.org/zap"
 )
 
 type Kafka struct {
 	writer   *kafka.Writer
+	logger   *zap.Logger
 	stopOnce sync.Once
 }
 
@@ -36,9 +38,14 @@ func ping(addr ...string) error {
 	return nil
 }
 
-func New(topic string, addr ...string) (*Kafka, error) {
+func New(logger *zap.Logger, topic string, addr ...string) (*Kafka, error) {
 	err := ping(addr...)
 	if err != nil {
+
+		if logger != nil {
+			logger.Error("kafka ping error", zap.Error(err))
+		}
+
 		return nil, err
 	}
 
@@ -55,6 +62,7 @@ func New(topic string, addr ...string) (*Kafka, error) {
 
 	return &Kafka{
 		writer: writer,
+		logger: logger,
 	}, nil
 }
 
@@ -74,6 +82,9 @@ func (k *Kafka) Write(item *rss.Item, channel *rss.Channel, isTesting bool, chan
 	kafkaItem.Channel = *kafkaChannel
 	data, err := json.Marshal(kafkaItem)
 	if err != nil {
+		if k.logger != nil {
+			k.logger.Error("json marshal error", zap.Error(err))
+		}
 		return err
 	}
 
@@ -86,8 +97,15 @@ func (k *Kafka) Write(item *rss.Item, channel *rss.Channel, isTesting bool, chan
 
 		if err == nil {
 			return nil
+		} else if k.logger != nil {
+			k.logger.Error("kafka write error", zap.Error(err))
 		}
+
 		time.Sleep(time.Duration(i+1) * time.Second)
+	}
+
+	if k.logger != nil {
+		k.logger.Info("kafka write ok")
 	}
 
 	return err

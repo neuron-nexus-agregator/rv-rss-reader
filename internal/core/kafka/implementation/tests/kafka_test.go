@@ -53,7 +53,7 @@ func createMessage() (*rss.Item, *rss.Channel, bool, string) {
 }
 
 func TestKafka_Connection(t *testing.T) {
-	_, err := implementation.New("test", os.Getenv("KAFKA_ADDR"))
+	_, err := implementation.New(nil, "test", os.Getenv("KAFKA_ADDR"))
 	assert.NoError(t, err)
 }
 
@@ -66,7 +66,7 @@ func TestKafka_Write(t *testing.T) {
 	assert.NoError(t, err)
 
 	// 2. создаем продюсер
-	k, err := implementation.New(topic, broker)
+	k, err := implementation.New(nil, topic, broker)
 	assert.NoError(t, err)
 
 	// 3. пишем сообщение
