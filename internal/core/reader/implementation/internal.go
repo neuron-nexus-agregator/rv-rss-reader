@@ -3,6 +3,8 @@ package implementation
 import (
 	"fmt"
 	"time"
+
+	"go.uber.org/zap"
 )
 
 const (
@@ -10,15 +12,44 @@ const (
 )
 
 func (r *RssReader) getLastReadGuid() (string, error) {
+
+	if r.cache == nil {
+		if r.logger != nil {
+			r.logger.Warn("cache is not initialized")
+		}
+		return "", fmt.Errorf("cache is not initialized")
+	}
+
 	data, err := r.cache.Get(LastReadGuidKey)
 	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to get last read guid", zap.Error(err))
+		}
 		return "", err
 	}
 	return string(data), nil
 }
 
 func (r *RssReader) saveLastReadGuid(guid string) error {
-	return r.cache.Set(LastReadGuidKey, []byte(guid), 24*time.Hour)
+
+	if r.cache == nil {
+		if r.logger != nil {
+			r.logger.Warn("cache is not initialized")
+		}
+		return fmt.Errorf("cache is not initialized")
+	}
+
+	err := r.cache.Set(LastReadGuidKey, []byte(guid), 24*time.Hour)
+	if err != nil {
+		if r.logger != nil {
+			r.logger.Error("failed to save last read guid", zap.Error(err))
+		}
+		return err
+	} else if r.logger != nil {
+		r.logger.Info("last read guid saved", zap.String("guid", guid))
+	}
+
+	return nil
 }
 
 func ParseRSSDate(s string) (*time.Time, error) {

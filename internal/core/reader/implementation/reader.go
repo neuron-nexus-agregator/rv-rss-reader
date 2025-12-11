@@ -10,6 +10,8 @@ import (
 
 	"gafarov/rss-reader/internal/core/cache"
 	"gafarov/rss-reader/internal/model/rss"
+
+	"go.uber.org/zap"
 )
 
 type RssReader struct {
@@ -23,9 +25,10 @@ type RssReader struct {
 	mu       sync.Mutex
 	wg       sync.WaitGroup
 	isStoped *atomic.Bool
+	logger   *zap.Logger
 }
 
-func New(cache cache.ICache) *RssReader {
+func New(cache cache.ICache, logger *zap.Logger) *RssReader {
 
 	isStoped := atomic.Bool{}
 	isStoped.Store(false)
@@ -38,13 +41,22 @@ func New(cache cache.ICache) *RssReader {
 		stopChan: make(chan struct{}),
 		client:   http.Client{Timeout: 10 * time.Second},
 		isStoped: &isStoped,
+		logger:   logger,
 	}
 }
 
 func (r *RssReader) Stop() error {
 	if r.isStoped.Load() {
+		if r.logger != nil {
+			r.logger.Error("reader already stopped", zap.Error(ErrClosed))
+		}
 		return ErrClosed
 	}
+
+	if r.logger != nil {
+		r.logger.Info("stopping reader")
+	}
+
 	r.close()
 	return nil
 }
@@ -64,6 +76,10 @@ func (r *RssReader) close() {
 		r.wg.Wait()
 		close(r.output)
 		r.feeds = make(map[string]struct{})
+
+		if r.logger != nil {
+			r.logger.Info("reader stopped")
+		}
 	})
 }
 
@@ -81,15 +97,26 @@ func (r *RssReader) isInProcessOrRegister(url string) bool {
 func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Context) error {
 
 	if r.IsStopped() {
+		if r.logger != nil {
+			r.logger.Error("reader already stopped", zap.Error(ErrClosed))
+		}
 		return ErrClosed
 	}
 
 	if r.isInProcessOrRegister(url) {
+		if r.logger != nil {
+			r.logger.Error("already parsing", zap.String("url", url))
+		}
 		return ErrAlreadyStarted
+	} else if r.logger != nil {
+		r.logger.Info("starting parsing", zap.String("url", url))
 	}
 
 	err := r.startOnce(url, ctx)
 	if err != nil && err != ErrNoItemsFound {
+		if r.logger != nil {
+			r.logger.Error("failed to start parsing", zap.String("url", url), zap.Error(err))
+		}
 		return err
 	}
 
@@ -105,12 +132,21 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 				r.mu.Lock()
 				delete(r.feeds, url)
 				r.mu.Unlock()
+				if r.logger != nil {
+					r.logger.Info("parsing stopped", zap.String("url", url))
+				}
 				return
 			case <-r.stopChan:
+				if r.logger != nil {
+					r.logger.Info("reader stopped")
+				}
 				return
 			case <-ticker.C:
 				err := r.startOnce(url, ctx)
 				if err != nil && err != ErrNoItemsFound {
+					if r.logger != nil {
+						r.logger.Error("failed to parsing", zap.String("url", url), zap.Error(err))
+					}
 					return
 				}
 			}

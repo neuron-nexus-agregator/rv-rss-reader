@@ -13,7 +13,7 @@ import (
 var RSS_URL = "https://realnoevremya.ru/rss/yandex-dzen.xml"
 
 func TestRssReader_IsStopped(t *testing.T) {
-	r := rss.New(nil)
+	r := rss.New(nil, nil)
 	assert.False(t, r.IsStopped())
 
 	err := r.Stop()
@@ -22,7 +22,7 @@ func TestRssReader_IsStopped(t *testing.T) {
 }
 
 func TestRssReader_DoubleClose(t *testing.T) {
-	r := rss.New(nil)
+	r := rss.New(nil, nil)
 	assert.False(t, r.IsStopped())
 
 	err := r.Stop()
@@ -34,7 +34,7 @@ func TestRssReader_DoubleClose(t *testing.T) {
 }
 
 func TestRssReader_StartParsing(t *testing.T) {
-	r := rss.New(nil)
+	r := rss.New(nil, nil)
 	ctx := context.Background()
 
 	err := r.StartParsing(RSS_URL, time.Second, ctx)
@@ -47,7 +47,7 @@ func TestRssReader_StartParsing(t *testing.T) {
 }
 
 func TestRssReader_GetItems(t *testing.T) {
-	r := rss.New(nil)
+	r := rss.New(nil, nil)
 	ctx := context.Background()
 
 	items, err := r.ParseOnce(RSS_URL, ctx)
@@ -60,7 +60,7 @@ func TestRssReader_GetItems(t *testing.T) {
 }
 
 func TestRssReader_GetItemContent(t *testing.T) {
-	r := rss.New(nil)
+	r := rss.New(nil, nil)
 	ctx := context.Background()
 
 	items, err := r.ParseOnce(RSS_URL, ctx)
@@ -80,7 +80,7 @@ func TestRssReader_GetItemContent(t *testing.T) {
 }
 
 func TestRssReader_DoubleStart(t *testing.T) {
-	r := rss.New(nil)
+	r := rss.New(nil, nil)
 	ctx := context.Background()
 
 	err := r.StartParsing(RSS_URL, time.Second, ctx)
