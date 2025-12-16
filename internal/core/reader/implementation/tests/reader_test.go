@@ -37,7 +37,7 @@ func TestRssReader_StartParsing(t *testing.T) {
 	r := rss.New(nil, nil)
 	ctx := context.Background()
 
-	err := r.StartParsing(RSS_URL, time.Second, ctx)
+	err := r.StartParsing(RSS_URL, "test", time.Second, ctx)
 	assert.Nil(t, err)
 	assert.False(t, r.IsStopped())
 
@@ -83,10 +83,10 @@ func TestRssReader_DoubleStart(t *testing.T) {
 	r := rss.New(nil, nil)
 	ctx := context.Background()
 
-	err := r.StartParsing(RSS_URL, time.Second, ctx)
+	err := r.StartParsing(RSS_URL, "test", time.Second, ctx)
 	assert.Nil(t, err)
 
-	err = r.StartParsing(RSS_URL, time.Second, ctx)
+	err = r.StartParsing(RSS_URL, "test", time.Second, ctx)
 	assert.Equal(t, rss.ErrAlreadyStarted, err)
 
 	err = r.Stop()

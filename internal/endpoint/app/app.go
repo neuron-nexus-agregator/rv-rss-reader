@@ -25,10 +25,10 @@ func New(reader reader.IReader, kafka kafka.IKafka, logger *zap.Logger) *App {
 	}
 }
 
-func (a *App) Run(url, code string, delay time.Duration, ctx context.Context) error {
+func (a *App) Run(url, code, name string, delay time.Duration, ctx context.Context) error {
 	a.logger.Info("Starting app", zap.String("url", url), zap.String("code", code), zap.Duration("delay", delay))
 	output := a.reader.Output()
-	a.reader.StartParsing(url, delay, ctx)
+	a.reader.StartParsing(url, name, delay, ctx)
 	defer a.reader.Stop()
 
 	channel, err := a.reader.GetChannel(url, ctx)

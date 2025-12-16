@@ -152,7 +152,7 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	err = app.Run(rss_url, rss_code, delay, ctx)
+	err = app.Run(rss_url, "realtime:site", rss_code, delay, ctx)
 	if err != nil {
 		logger.Fatal("Failed to run application", zap.Error(err))
 	}

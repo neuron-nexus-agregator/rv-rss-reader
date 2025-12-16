@@ -94,7 +94,7 @@ func (r *RssReader) isInProcessOrRegister(url string) bool {
 	return true
 }
 
-func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Context) error {
+func (r *RssReader) StartParsing(url, name string, delay time.Duration, ctx context.Context) error {
 
 	if r.IsStopped() {
 		if r.logger != nil {
@@ -112,7 +112,7 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 		r.logger.Info("starting parsing", zap.String("url", url))
 	}
 
-	err := r.startOnce(url, ctx)
+	err := r.startOnce(url, name, ctx)
 	if err != nil && err != ErrNoItemsFound {
 		if r.logger != nil {
 			r.logger.Error("failed to start parsing", zap.String("url", url), zap.Error(err))
@@ -142,12 +142,11 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 				}
 				return
 			case <-ticker.C:
-				err := r.startOnce(url, ctx)
+				err := r.startOnce(url, name, ctx)
 				if err != nil && err != ErrNoItemsFound {
 					if r.logger != nil {
 						r.logger.Error("failed to parsing", zap.String("url", url), zap.Error(err))
 					}
-					return
 				}
 			}
 		}
@@ -155,11 +154,11 @@ func (r *RssReader) StartParsing(url string, delay time.Duration, ctx context.Co
 	return nil
 }
 
-func (r *RssReader) startOnce(url string, ctx context.Context) error {
+func (r *RssReader) startOnce(url, name string, ctx context.Context) error {
 	var lastGuid string = ""
 
 	if r.lastGuid == "" {
-		rLastGuid, err := r.getLastReadGuid()
+		rLastGuid, err := r.getLastReadGuid(name)
 		if err != nil {
 			lastGuid = ""
 		}
@@ -178,13 +177,26 @@ func (r *RssReader) startOnce(url string, ctx context.Context) error {
 	if lastGuid == "" && len(items) > 0 {
 		lastGuid = items[0].Guid
 		r.lastGuid = lastGuid
-		err = r.saveLastReadGuid(lastGuid)
+		err = r.saveLastReadGuid(lastGuid, name)
 		if err != nil {
 			// TODO handle error
 		}
 		return nil
 	}
 
+	var lastNewsGuid string
+	if len(items) > 0 {
+		lastNewsGuid = items[0].Guid
+		if lastNewsGuid == lastGuid {
+			// r.logger.Info("No new news", zap.String("last saved guid", r.lastGuid), zap.String("last current news guid", lastNewsGuid))
+			return nil
+		}
+		err = r.saveLastReadGuid(lastNewsGuid, name)
+		if err != nil {
+			r.logger.Error("Error saving last guid in cache", zap.Error(err), zap.String("guid", lastNewsGuid))
+			// TODO handle error
+		}
+	}
 	for _, item := range items {
 
 		if item.Guid == lastGuid {
@@ -199,14 +211,7 @@ func (r *RssReader) startOnce(url string, ctx context.Context) error {
 		}
 	}
 
-	if len(items) > 0 {
-		r.lastGuid = items[0].Guid
-		err = r.saveLastReadGuid(r.lastGuid)
-		if err != nil {
-			// TODO handle error
-		}
-	}
-
+	r.lastGuid = lastNewsGuid
 	return nil
 }
 
@@ -250,7 +255,10 @@ func (r *RssReader) GetChannel(url string, ctx context.Context) (*rss.Channel, e
 		return nil, err
 	}
 
-	req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
 	response, err := r.client.Do(req)
 	if err != nil {
 		return nil, err

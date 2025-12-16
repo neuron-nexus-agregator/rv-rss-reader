@@ -47,7 +47,7 @@ func New(redisData RedisData, kafkaData KafkaData, logger *zap.Logger) (*App, er
 	}, nil
 }
 
-func (a *App) Run(url, code string, delay time.Duration, ctx context.Context) error {
-	a.logger.Info("Starting app", zap.String("url", url), zap.String("code", code), zap.Duration("delay", delay))
-	return a.endpoint.Run(url, code, delay, ctx)
+func (a *App) Run(url, name, code string, delay time.Duration, ctx context.Context) error {
+	a.logger.Info("Starting app", zap.String("url", url), zap.String("name", name), zap.String("code", code), zap.Duration("delay", delay))
+	return a.endpoint.Run(url, name, code, delay, ctx)
 }
