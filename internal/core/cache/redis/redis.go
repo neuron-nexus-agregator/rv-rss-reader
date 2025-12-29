@@ -54,10 +54,6 @@ func (c *RedisCache) Get(key string) ([]byte, error) {
 		return nil, err
 	}
 
-	if c.logger != nil {
-		c.logger.Info("got from cache", zap.String("key", key), zap.String("value", string(data)))
-	}
-
 	return data, nil
 }
 

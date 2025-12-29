@@ -8,29 +8,29 @@ import (
 )
 
 const (
-	LastReadGuidKey = "rss_reader:last_read_guid:"
+	LastReadGuidKey = "rss_reader:read_guid:"
 )
 
-func (r *RssReader) getLastReadGuid(name string) (string, error) {
+func (r *RssReader) isProcessed(id, name string) (bool, error) {
 
 	if r.cache == nil {
 		if r.logger != nil {
 			r.logger.Warn("cache is not initialized")
 		}
-		return "", fmt.Errorf("cache is not initialized")
+		return false, fmt.Errorf("cache is not initialized")
 	}
 
-	data, err := r.cache.Get(LastReadGuidKey + name)
+	data, err := r.cache.Get(LastReadGuidKey + name + ":" + id)
 	if err != nil {
 		if r.logger != nil {
 			r.logger.Error("failed to get last read guid", zap.Error(err))
 		}
-		return "", err
+		return false, err
 	}
-	return string(data), nil
+	return string(data) != "", nil
 }
 
-func (r *RssReader) saveLastReadGuid(guid, name string) error {
+func (r *RssReader) saveReadGuid(guid, name string, ttl time.Duration) error {
 
 	if r.cache == nil {
 		if r.logger != nil {
@@ -39,7 +39,7 @@ func (r *RssReader) saveLastReadGuid(guid, name string) error {
 		return fmt.Errorf("cache is not initialized")
 	}
 
-	err := r.cache.Set(LastReadGuidKey+name, []byte(guid), 24*time.Hour)
+	err := r.cache.Set(LastReadGuidKey+name+":"+guid, []byte(guid), ttl)
 	if err != nil {
 		if r.logger != nil {
 			r.logger.Error("failed to save last read guid", zap.Error(err))

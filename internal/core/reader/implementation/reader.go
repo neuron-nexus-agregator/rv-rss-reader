@@ -15,17 +15,17 @@ import (
 )
 
 type RssReader struct {
-	cache    cache.ICache
-	lastGuid string
-	output   chan rss.Item
-	stopOnce sync.Once
-	stopChan chan struct{}
-	feeds    map[string]struct{}
-	client   http.Client
-	mu       sync.Mutex
-	wg       sync.WaitGroup
-	isStoped *atomic.Bool
-	logger   *zap.Logger
+	cache     cache.ICache
+	output    chan rss.Item
+	stopOnce  sync.Once
+	stopChan  chan struct{}
+	feeds     map[string]struct{}
+	client    http.Client
+	mu        sync.Mutex
+	wg        sync.WaitGroup
+	isStarted *atomic.Bool
+	isStoped  *atomic.Bool
+	logger    *zap.Logger
 }
 
 func New(cache cache.ICache, logger *zap.Logger) *RssReader {
@@ -33,15 +33,18 @@ func New(cache cache.ICache, logger *zap.Logger) *RssReader {
 	isStoped := atomic.Bool{}
 	isStoped.Store(false)
 
+	isStarted := atomic.Bool{}
+	isStarted.Store(false)
+
 	return &RssReader{
-		cache:    cache,
-		lastGuid: "",
-		output:   make(chan rss.Item, 500),
-		feeds:    make(map[string]struct{}),
-		stopChan: make(chan struct{}),
-		client:   http.Client{Timeout: 10 * time.Second},
-		isStoped: &isStoped,
-		logger:   logger,
+		cache:     cache,
+		output:    make(chan rss.Item, 500),
+		feeds:     make(map[string]struct{}),
+		stopChan:  make(chan struct{}),
+		client:    http.Client{Timeout: 10 * time.Second},
+		isStarted: &isStarted,
+		isStoped:  &isStoped,
+		logger:    logger,
 	}
 }
 
@@ -155,18 +158,6 @@ func (r *RssReader) StartParsing(url, name string, delay time.Duration, ctx cont
 }
 
 func (r *RssReader) startOnce(url, name string, ctx context.Context) error {
-	var lastGuid string = ""
-
-	if r.lastGuid == "" {
-		rLastGuid, err := r.getLastReadGuid(name)
-		if err != nil {
-			lastGuid = ""
-		}
-		lastGuid = rLastGuid
-	} else {
-		lastGuid = r.lastGuid
-	}
-
 	items, err := r.ParseOnce(url, ctx)
 	if err == ErrNoItemsFound {
 		return nil
@@ -174,44 +165,44 @@ func (r *RssReader) startOnce(url, name string, ctx context.Context) error {
 		return err
 	}
 
-	if lastGuid == "" && len(items) > 0 {
-		lastGuid = items[0].Guid
-		r.lastGuid = lastGuid
-		err = r.saveLastReadGuid(lastGuid, name)
-		if err != nil {
-			// TODO handle error
+	wg := sync.WaitGroup{}
+	defer wg.Wait()
+
+	if !r.isStarted.Load() {
+		for _, item := range items {
+			wg.Go(func() {
+				if err := r.saveReadGuid(item.Guid, name, 3*24*time.Hour); err != nil {
+					if r.logger != nil {
+						r.logger.Error("failed to save last read guid", zap.Error(err))
+					}
+				}
+			})
 		}
-		return nil
+		r.isStarted.Store(true)
 	}
 
-	var lastNewsGuid string
-	if len(items) > 0 {
-		lastNewsGuid = items[0].Guid
-		if lastNewsGuid == lastGuid {
-			// r.logger.Info("No new news", zap.String("last saved guid", r.lastGuid), zap.String("last current news guid", lastNewsGuid))
-			return nil
-		}
-		err = r.saveLastReadGuid(lastNewsGuid, name)
-		if err != nil {
-			r.logger.Error("Error saving last guid in cache", zap.Error(err), zap.String("guid", lastNewsGuid))
-			// TODO handle error
-		}
-	}
 	for _, item := range items {
 
-		if item.Guid == lastGuid {
-			break
+		if isProcessed, err := r.isProcessed(item.Guid, name); err != nil {
+			if r.logger != nil {
+				r.logger.Error("failed to check if item is processed", zap.Error(err))
+			}
+		} else if isProcessed {
+			continue
 		}
 
 		select {
 		case r.output <- *item:
+			if err := r.saveReadGuid(item.Guid, name, 14*24*time.Hour); err != nil {
+				if r.logger != nil {
+					r.logger.Error("failed to save last read guid", zap.Error(err))
+				}
+			}
 		default:
-			// skip if channel is blocked
 			continue
 		}
 	}
 
-	r.lastGuid = lastNewsGuid
 	return nil
 }
 

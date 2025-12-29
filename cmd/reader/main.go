@@ -148,7 +148,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	delay := 1 * time.Minute
+	delay := 5 * time.Second
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
