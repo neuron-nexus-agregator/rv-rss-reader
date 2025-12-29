@@ -18,6 +18,4 @@ WORKDIR /app
 
 COPY --from=builder /usr/src/app/reader .
 
-USER nonroot:nonroot
-
 CMD ["./reader"]
