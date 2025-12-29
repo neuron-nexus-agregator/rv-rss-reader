@@ -92,11 +92,8 @@ func main() {
 
 	logger := initLogger()
 
-	if os.Getenv("TEST") == "true" {
-		if err := initSystem(); err != nil {
-			logger.Fatal("Failed to initialize system", zap.Error(err))
-			os.Exit(1)
-		}
+	if err := initSystem(); err != nil {
+		logger.Warn("Failed to initialize system", zap.Error(err))
 	}
 
 	redis_host := os.Getenv("REDIS_HOST")
